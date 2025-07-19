@@ -15,7 +15,7 @@ public class FactureController {
     private FactureService factureService;
 
     @PostMapping
-    public Facture createFacture(@RequestBody Facture dto) {
+    public Facture createFacture(@RequestBody Facture dto) throws Exception {
         return factureService.createFacture(dto);
     }
 

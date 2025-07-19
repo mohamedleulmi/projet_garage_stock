@@ -1,5 +1,6 @@
 package com.garage.garage_back.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,6 +17,8 @@ public class LigneFactureProduit {
     private Long id;
 
     @ManyToOne
+    @JoinColumn(name = "facture_id")
+    @JsonBackReference
     private Facture facture;
 
     @ManyToOne

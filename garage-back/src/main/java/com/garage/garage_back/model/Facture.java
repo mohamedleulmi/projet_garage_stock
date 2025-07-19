@@ -1,5 +1,6 @@
 package com.garage.garage_back.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -31,7 +32,8 @@ public class Facture {
     @ManyToOne
     private Client client;
 
-    @OneToMany(mappedBy = "facture", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "facture", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<LigneFactureProduit> lignesProduit;
 
     @OneToMany(mappedBy = "facture", cascade = CascadeType.ALL)
