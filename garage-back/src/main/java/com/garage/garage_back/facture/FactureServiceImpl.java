@@ -2,9 +2,7 @@ package com.garage.garage_back.facture;
 
 import com.garage.garage_back.client.ClientRepository;
 import com.garage.garage_back.facture.ligneFacturePrestation.LigneFacturePrestationRepository;
-import com.garage.garage_back.facture.ligneFacturePrestation.LignePrestationDTO;
 import com.garage.garage_back.facture.ligneFactureProduit.LigneFactureProduitRepository;
-import com.garage.garage_back.facture.ligneFactureProduit.LigneProduitDTO;
 import com.garage.garage_back.model.*;
 import com.garage.garage_back.produit.ProduitRepository;
 import org.springframework.beans.factory.annotation.Autowired;

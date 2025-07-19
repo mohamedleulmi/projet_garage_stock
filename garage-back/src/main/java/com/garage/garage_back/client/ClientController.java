@@ -28,4 +28,9 @@ public class ClientController {
     public void deleteClient(@PathVariable Long id) {
         clientService.deleteClient(id);
     }
+
+    @GetMapping("/{id}")
+    public Client getClientById(@PathVariable Long id) {
+        return clientService.getClientById(id);
+    }
 }
