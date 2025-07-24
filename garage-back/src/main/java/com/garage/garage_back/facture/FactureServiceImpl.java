@@ -12,6 +12,7 @@ import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.pdf.draw.LineSeparator;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +37,6 @@ public class FactureServiceImpl implements FactureService {
     private FactureRepository factureRepository;
     @Autowired private ProduitRepository produitRepository;
     @Autowired private ClientRepository clientRepository;
-    @Autowired private LigneFactureProduitRepository ligneProduitRepository;
-    @Autowired private LigneFacturePrestationRepository lignePrestationRepository;
 
     @Override
     @Transactional
@@ -53,9 +53,6 @@ public class FactureServiceImpl implements FactureService {
 
         double totalHT = 0;
         double totalTVA = 0;
-
-        // On sauve la facture vide d'abord pour avoir un ID (utile pour setFacture ensuite)
-        facture = factureRepository.save(facture);
 
         List<LigneFactureProduit> lignesProduit = new ArrayList<>();
         List<Produit> produitsToUpdate = new ArrayList<>();
@@ -144,7 +141,7 @@ public class FactureServiceImpl implements FactureService {
     }
 
     private void generatePdf(Facture facture) throws Exception {
-        Document document = new Document(PageSize.A4, 50, 50, 50, 50); // marges plus grandes
+        Document document = new Document(PageSize.A4, 50, 50, 50, 50);
         String fileName = "facture_" + facture.getNumero() + ".pdf";
         Path path = Paths.get("factures", fileName);
         Files.createDirectories(path.getParent());
@@ -152,116 +149,166 @@ public class FactureServiceImpl implements FactureService {
         PdfWriter.getInstance(document, new FileOutputStream(path.toFile()));
         document.open();
 
-        // POLICES
-        Font fontTitle = new Font(Font.HELVETICA, 18, Font.BOLD, Color.BLUE);
-        Font fontSubTitle = new Font(Font.HELVETICA, 14, Font.BOLD, Color.DARK_GRAY);
+        // === Polices ===
         Font fontBold = new Font(Font.HELVETICA, 12, Font.BOLD);
         Font fontNormal = new Font(Font.HELVETICA, 12);
+        Font fontSectionTitle = new Font(Font.HELVETICA, 14, Font.BOLD, new Color(44, 62, 80)); // Bleu nuit
         Font fontTableHeader = new Font(Font.HELVETICA, 12, Font.BOLD, Color.WHITE);
 
-        // LOGO + infos garage en ligne
-        PdfPTable headerTable = new PdfPTable(2);
-        headerTable.setWidthPercentage(100);
-        headerTable.setWidths(new float[]{1, 3});
-
-        // Logo
-        InputStream logoStream = getClass().getResourceAsStream("/static/logo.png");
-        if (logoStream != null) {
-            Image logo = Image.getInstance(IOUtils.toByteArray(logoStream));
-            logo.scaleToFit(100, 50);
-            PdfPCell logoCell = new PdfPCell(logo, false);
-            logoCell.setBorder(Rectangle.NO_BORDER);
-            headerTable.addCell(logoCell);
-        } else {
-            headerTable.addCell(""); // cellule vide si pas de logo
+        // === Bannière ===
+        InputStream bannerStream = getClass().getResourceAsStream("/static/banner.png");
+        if (bannerStream != null) {
+            Image banner = Image.getInstance(IOUtils.toByteArray(bannerStream));
+            banner.scaleToFit(PageSize.A4.getWidth() - 100, 150);
+            banner.setAlignment(Image.ALIGN_CENTER);
+            document.add(banner);
+            document.add(Chunk.NEWLINE);
         }
 
-        // Infos garage
-        PdfPCell garageInfo = new PdfPCell();
-        garageInfo.setBorder(Rectangle.NO_BORDER);
-        garageInfo.addElement(new Paragraph("Garage AutoExpress", fontTitle));
-        garageInfo.addElement(new Paragraph("12 Rue du Mécano, 75000 Paris", fontNormal));
-        garageInfo.addElement(new Paragraph("Tél : 01 23 45 67 89", fontNormal));
-        headerTable.addCell(garageInfo);
-
-        document.add(headerTable);
+        // === Séparateur
+        LineSeparator separator = new LineSeparator();
+        separator.setLineWidth(1.7f);
+        separator.setLineColor(Color.LIGHT_GRAY);
+        document.add(new Chunk(separator));
         document.add(Chunk.NEWLINE);
 
-        // Infos client
-        Paragraph clientTitle = new Paragraph("Facturé à :", fontSubTitle);
-        clientTitle.setSpacingAfter(10);
-        document.add(clientTitle);
+        // === Infos Garage / Client
+        PdfPTable infoTable = new PdfPTable(2);
+        infoTable.setWidthPercentage(100);
+        infoTable.setWidths(new float[]{1, 1});
+        infoTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+
+        PdfPCell garageCell = new PdfPCell();
+        garageCell.setBorder(Rectangle.NO_BORDER);
+        garageCell.setPadding(5);
+        garageCell.addElement(new Paragraph("Garage AutoExpress", fontBold));
+        garageCell.addElement(new Paragraph("12 Rue du Mécano", fontNormal));
+        garageCell.addElement(new Paragraph("75000 Paris", fontNormal));
+        garageCell.addElement(new Paragraph("Tél : 01 23 45 67 89", fontNormal));
+        infoTable.addCell(garageCell);
 
         Client c = facture.getClient();
-        Paragraph clientInfo = new Paragraph();
-        clientInfo.setFont(fontNormal);
-        clientInfo.add(c.getNom() + "\n");
-        clientInfo.add("Téléphone : " + c.getTelephone() + "\n");
-        clientInfo.add("Véhicule : " + c.getVehiculeImatriculation() + "\n");
-        document.add(clientInfo);
+        PdfPCell clientCell = new PdfPCell();
+        clientCell.setBorder(Rectangle.NO_BORDER);
+        clientCell.setPadding(5);
+        clientCell.addElement(new Paragraph("Facturé à :", fontBold));
+        clientCell.addElement(new Paragraph(c.getNom(), fontNormal));
+        clientCell.addElement(new Paragraph("Tél : " + c.getTelephone(), fontNormal));
+        clientCell.addElement(new Paragraph("Véhicule : " + c.getVehiculeImatriculation(), fontNormal));
+        infoTable.addCell(clientCell);
+
+        document.add(infoTable);
+        document.add(Chunk.NEWLINE);
+        document.add(new Chunk(separator));
         document.add(Chunk.NEWLINE);
 
-        // Tableau des produits et prestations
-        PdfPTable table = new PdfPTable(5);
-        table.setWidthPercentage(100);
-        table.setWidths(new float[]{4, 2, 1.5f, 1.5f, 2.5f});
 
-        // En-tête coloré
+        // === Section PRODUITS ===
+        Paragraph titreProduitVendu = new Paragraph("Produits vendus", fontSectionTitle);
+        titreProduitVendu.setAlignment(Element.ALIGN_CENTER);
+        titreProduitVendu.setSpacingBefore(10);
+        titreProduitVendu.setSpacingAfter(10);
+        document.add(titreProduitVendu);
+
+        PdfPTable tableProduits = new PdfPTable(5);
+        tableProduits.setWidthPercentage(80);
+        tableProduits.setHorizontalAlignment(Element.ALIGN_CENTER);
+        tableProduits.setWidths(new float[]{4, 2, 1.5f, 1.5f, 2.5f});
+
         Stream.of("Désignation", "PU HT", "Quantité", "TVA", "Total TTC").forEach(title -> {
             PdfPCell header = new PdfPCell(new Phrase(title, fontTableHeader));
-            header.setBackgroundColor(Color.BLUE);
+            header.setBackgroundColor(new Color(44, 62, 80)); // Bleu nuit
             header.setHorizontalAlignment(Element.ALIGN_CENTER);
             header.setPadding(5);
-            table.addCell(header);
+            tableProduits.addCell(header);
         });
 
-        // Contenu lignes produits
+        boolean alternate = false;
         for (LigneFactureProduit ligne : facture.getLignesProduit()) {
-            table.addCell(new PdfPCell(new Phrase(ligne.getProduit().getDesignation(), fontNormal)));
+            Color rowColor = alternate ? new Color(236, 240, 241) : Color.WHITE; // Gris clair
+            alternate = !alternate;
 
-            PdfPCell puCell = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getPrixUnitaireHT()), fontNormal));
-            puCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(puCell);
+            PdfPCell cell1 = new PdfPCell(new Phrase(ligne.getProduit().getDesignation(), fontNormal));
+            cell1.setBackgroundColor(rowColor);
+            tableProduits.addCell(cell1);
 
-            PdfPCell qtyCell = new PdfPCell(new Phrase(String.valueOf(ligne.getQuantite()), fontNormal));
-            qtyCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            table.addCell(qtyCell);
+            PdfPCell pu = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getPrixUnitaireHT()), fontNormal));
+            pu.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            pu.setBackgroundColor(rowColor);
+            tableProduits.addCell(pu);
 
-            PdfPCell tvaCell = new PdfPCell(new Phrase(String.format("%.0f%%", ligne.getTva()), fontNormal));
-            tvaCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            table.addCell(tvaCell);
+            PdfPCell qty = new PdfPCell(new Phrase(String.valueOf(ligne.getQuantite()), fontNormal));
+            qty.setHorizontalAlignment(Element.ALIGN_CENTER);
+            qty.setBackgroundColor(rowColor);
+            tableProduits.addCell(qty);
 
-            PdfPCell totalCell = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getTotalTTC()), fontNormal));
-            totalCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(totalCell);
+            PdfPCell tva = new PdfPCell(new Phrase(String.format("%.0f%%", ligne.getTva()), fontNormal));
+            tva.setHorizontalAlignment(Element.ALIGN_CENTER);
+            tva.setBackgroundColor(rowColor);
+            tableProduits.addCell(tva);
+
+            PdfPCell total = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getTotalTTC()), fontNormal));
+            total.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            total.setBackgroundColor(rowColor);
+            tableProduits.addCell(total);
         }
 
-        // Contenu lignes prestations
+        document.add(tableProduits);
+
+        // === Section PRESTATIONS ===
+        Paragraph titrePrestation = new Paragraph("Prestations effectuées", fontSectionTitle);
+        titrePrestation.setAlignment(Element.ALIGN_CENTER);
+        titrePrestation.setSpacingBefore(10);
+        titrePrestation.setSpacingAfter(10);
+        document.add(titrePrestation);
+
+        PdfPTable tablePrestations = new PdfPTable(5);
+        tablePrestations.setWidthPercentage(80);
+        tablePrestations.setHorizontalAlignment(Element.ALIGN_CENTER);
+        tablePrestations.setWidths(new float[]{4, 2, 1.5f, 1.5f, 2.5f});
+
+        Stream.of("Désignation", "PU HT", "Quantité", "TVA", "Total TTC").forEach(title -> {
+            PdfPCell header = new PdfPCell(new Phrase(title, fontTableHeader));
+            header.setBackgroundColor(new Color(44, 62, 80));
+            header.setHorizontalAlignment(Element.ALIGN_CENTER);
+            header.setPadding(5);
+            tablePrestations.addCell(header);
+        });
+
+        alternate = false;
         for (LigneFacturePrestation ligne : facture.getLignesPrestation()) {
-            table.addCell(new PdfPCell(new Phrase(ligne.getDescription(), fontNormal)));
+            Color rowColor = alternate ? new Color(236, 240, 241) : Color.WHITE;
+            alternate = !alternate;
 
-            PdfPCell puCell = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getPrixHT()), fontNormal));
-            puCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(puCell);
+            PdfPCell cell1 = new PdfPCell(new Phrase(ligne.getDescription(), fontNormal));
+            cell1.setBackgroundColor(rowColor);
+            tablePrestations.addCell(cell1);
 
-            PdfPCell qtyCell = new PdfPCell(new Phrase("1", fontNormal));
-            qtyCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            table.addCell(qtyCell);
+            PdfPCell pu = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getPrixHT()), fontNormal));
+            pu.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            pu.setBackgroundColor(rowColor);
+            tablePrestations.addCell(pu);
 
-            PdfPCell tvaCell = new PdfPCell(new Phrase(String.format("%.0f%%", ligne.getTva()), fontNormal));
-            tvaCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            table.addCell(tvaCell);
+            PdfPCell qty = new PdfPCell(new Phrase("1", fontNormal));
+            qty.setHorizontalAlignment(Element.ALIGN_CENTER);
+            qty.setBackgroundColor(rowColor);
+            tablePrestations.addCell(qty);
 
-            PdfPCell totalCell = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getTotalTTC()), fontNormal));
-            totalCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(totalCell);
+            PdfPCell tva = new PdfPCell(new Phrase(String.format("%.0f%%", ligne.getTva()), fontNormal));
+            tva.setHorizontalAlignment(Element.ALIGN_CENTER);
+            tva.setBackgroundColor(rowColor);
+            tablePrestations.addCell(tva);
+
+            PdfPCell total = new PdfPCell(new Phrase(String.format("%.2f €", ligne.getTotalTTC()), fontNormal));
+            total.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            total.setBackgroundColor(rowColor);
+            tablePrestations.addCell(total);
         }
 
-        document.add(table);
-
+        document.add(tablePrestations);
         document.add(Chunk.NEWLINE);
 
-        // Encadré totaux
+        // === Totaux
         PdfPTable totalsTable = new PdfPTable(2);
         totalsTable.setWidthPercentage(30);
         totalsTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
@@ -295,9 +342,9 @@ public class FactureServiceImpl implements FactureService {
         totalsTable.addCell(valueTTC);
 
         document.add(totalsTable);
-
         document.close();
     }
+
 
 
 }
