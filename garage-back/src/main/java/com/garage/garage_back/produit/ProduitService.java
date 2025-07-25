@@ -5,9 +5,9 @@ import com.garage.garage_back.model.Produit;
 import java.util.List;
 
 public interface ProduitService {
-    List<Produit> getAllProduits();
-    List<Produit> getProduitsSousSeuil();
-    Produit saveProduit(Produit produit);
-    Produit updateProduit(Long id, Produit produit);
+    List<ProduitDTO> getAllProduits();
+    List<ProduitDTO> getProduitsSousSeuil();
+    ProduitDTO saveProduit(ProduitDTO produitDTO);
+    ProduitDTO updateProduit(Long id, ProduitDTO produitDTO);
     void deleteProduit(Long id);
 }

@@ -11,16 +11,19 @@ import java.util.List;
 @CrossOrigin
 public class ClientController {
 
-    @Autowired
-    private ClientService clientService;
+    private final ClientService clientService;
+
+    ClientController(ClientService clientService) {
+        this.clientService = clientService;
+    }
 
     @GetMapping
-    public List<Client> getAllClients() {
+    public List<ClientDTO> getAllClients() {
         return clientService.getAllClients();
     }
 
     @PostMapping
-    public Client createClient(@RequestBody Client client) {
+    public ClientDTO createClient(@RequestBody ClientDTO client) {
         return clientService.saveClient(client);
     }
 
@@ -30,7 +33,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    public Client getClientById(@PathVariable Long id) {
+    public ClientDTO getClientById(@PathVariable Long id) {
         return clientService.getClientById(id);
     }
 }

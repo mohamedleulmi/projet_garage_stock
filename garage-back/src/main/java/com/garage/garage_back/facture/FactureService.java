@@ -5,7 +5,7 @@ import com.garage.garage_back.model.Facture;
 import java.util.List;
 
 public interface FactureService {
-    Facture createFacture(Facture facture) throws Exception;
-    List<Facture> getAllFactures();
-    Facture getFactureById(Long id);
+    FactureDTO createFacture(FactureDTO factureDTO) throws Exception;
+    List<FactureDTO> getAllFactures();
+    FactureDTO getFactureById(Long id);
 }

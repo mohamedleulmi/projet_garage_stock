@@ -1,8 +1,11 @@
 package com.garage.garage_back.facture;
 
+import com.garage.garage_back.client.ClientMapper;
 import com.garage.garage_back.client.ClientRepository;
 import com.garage.garage_back.facture.ligneFacturePrestation.LigneFacturePrestationRepository;
+import com.garage.garage_back.facture.ligneFacturePrestation.LignePrestationDTO;
 import com.garage.garage_back.facture.ligneFactureProduit.LigneFactureProduitRepository;
+import com.garage.garage_back.facture.ligneFactureProduit.LigneProduitDTO;
 import com.garage.garage_back.model.*;
 import com.garage.garage_back.produit.ProduitRepository;
 import com.lowagie.text.*;
@@ -33,16 +36,26 @@ import java.util.stream.Stream;
 @Service
 public class FactureServiceImpl implements FactureService {
 
-    @Autowired
-    private FactureRepository factureRepository;
-    @Autowired private ProduitRepository produitRepository;
-    @Autowired private ClientRepository clientRepository;
+
+    private final FactureRepository factureRepository;
+    private final ProduitRepository produitRepository;
+    private final ClientRepository clientRepository;
+    private final FactureMapper factureMapper;
+    private final ClientMapper clientMapper;
+
+    FactureServiceImpl(FactureRepository factureRepository, ProduitRepository produitRepository, ClientRepository clientRepository, FactureMapper factureMapper, ClientMapper clientMapper) {
+        this.factureRepository = factureRepository;
+        this.produitRepository = produitRepository;
+        this.clientRepository = clientRepository;
+        this.factureMapper = factureMapper;
+        this.clientMapper = clientMapper;
+    }
 
     @Override
     @Transactional
-    public Facture createFacture(Facture dto) throws Exception {
+    public FactureDTO createFacture(FactureDTO factureDTO) throws Exception {
         // Récupération du client
-        Client client = clientRepository.findById(dto.getClient().getId())
+        Client client = clientRepository.findById(factureDTO.getClient().getId())
                 .orElseThrow(() -> new RuntimeException("Client introuvable"));
 
         // Création de la facture sans ID (elle sera persistée ensuite)
@@ -57,11 +70,11 @@ public class FactureServiceImpl implements FactureService {
         List<LigneFactureProduit> lignesProduit = new ArrayList<>();
         List<Produit> produitsToUpdate = new ArrayList<>();
 
-        for (LigneFactureProduit ligne : dto.getLignesProduit()) {
-            Produit produit = produitRepository.findById(ligne.getProduit().getId())
+        for (LigneProduitDTO ligneProduitDTO : factureDTO.getLignesProduit()) {
+            Produit produit = produitRepository.findById(ligneProduitDTO.getProduitId())
                     .orElseThrow(() -> new RuntimeException("Produit introuvable"));
 
-            int quantite = ligne.getQuantite();
+            int quantite = ligneProduitDTO.getQuantite();
 
             double prixUnitaireHT = produit.getPrixUnitaireHT();
             double tva = produit.getTva();
@@ -89,13 +102,13 @@ public class FactureServiceImpl implements FactureService {
 
         List<LigneFacturePrestation> lignesPrestation = new ArrayList<>();
 
-        for (LigneFacturePrestation ligne : dto.getLignesPrestation()) {
-            double prixHT = ligne.getPrixHT();
-            double tva = ligne.getTva();
+        for (LignePrestationDTO lignePrestationDTO : factureDTO.getLignesPrestation()) {
+            double prixHT = lignePrestationDTO.getPrixHT();
+            double tva = lignePrestationDTO.getTva();
             double ttc = prixHT * (1 + tva / 100);
 
             LigneFacturePrestation lfp = new LigneFacturePrestation();
-            lfp.setDescription(ligne.getDescription());
+            lfp.setDescription(lignePrestationDTO.getDescription());
             lfp.setPrixHT(prixHT);
             lfp.setTva(tva);
             lfp.setTotalTTC(ttc);
@@ -118,7 +131,7 @@ public class FactureServiceImpl implements FactureService {
 
 
         this.generatePdf(facture);
-        return facture;
+        return factureMapper.toDto(facture);
     }
 
     private String generateNumero() {
@@ -128,13 +141,14 @@ public class FactureServiceImpl implements FactureService {
     }
 
     @Override
-    public List<Facture> getAllFactures() {
-        return factureRepository.findAll();
+    public List<FactureDTO> getAllFactures() {
+        return factureRepository.findAll().stream().map(factureMapper::toDto).toList();
     }
 
     @Override
-    public Facture getFactureById(Long id) {
-        return factureRepository.findById(id).orElse(null);
+    public FactureDTO getFactureById(Long id) {
+        Facture facture =  factureRepository.findById(id).orElseThrow(() -> new RuntimeException("Facture non trouvé"));
+        return factureMapper.toDto(facture);
     }
 
     private void generatePdf(Facture facture) throws Exception {

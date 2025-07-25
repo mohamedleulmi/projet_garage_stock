@@ -20,24 +20,24 @@ public class FactureController {
     private FactureService factureService;
 
     @PostMapping
-    public Facture createFacture(@RequestBody Facture dto) throws Exception {
-        return factureService.createFacture(dto);
+    public FactureDTO createFacture(@RequestBody FactureDTO factureDTO) throws Exception {
+        return factureService.createFacture(factureDTO);
     }
 
     @GetMapping
-    public List<Facture> getAllFactures() {
+    public List<FactureDTO> getAllFactures() {
         return factureService.getAllFactures();
     }
 
     @GetMapping("/{id}")
-    public Facture getFactureById(@PathVariable Long id) {
+    public FactureDTO getFactureById(@PathVariable Long id) {
         return factureService.getFactureById(id);
     }
 
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> getFacturePdf(@PathVariable Long id) throws IOException {
-        Facture facture = factureService.getFactureById(id); // charge depuis DB
-        String fileName = "facture_" + facture.getNumero() + ".pdf";
+        FactureDTO factureDTO = factureService.getFactureById(id); // charge depuis DB
+        String fileName = "facture_" + factureDTO.getNumero() + ".pdf";
         Path path = Paths.get("factures", fileName);
 
         if (!Files.exists(path)) {

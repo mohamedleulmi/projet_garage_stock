@@ -11,17 +11,21 @@ import java.util.List;
 @CrossOrigin
 public class ProduitController {
 
-    @Autowired
-    private ProduitService produitService;
+
+    private final ProduitService produitService;
+
+    ProduitController(ProduitService produitService) {
+        this.produitService = produitService;
+    }
 
     @GetMapping
-    public List<Produit> getAllProduits() {
+    public List<ProduitDTO> getAllProduits() {
         return produitService.getAllProduits();
     }
 
     @PostMapping
-    public Produit createProduit(@RequestBody Produit produit) {
-        return produitService.saveProduit(produit);
+    public ProduitDTO createProduit(@RequestBody ProduitDTO produitDTO) {
+        return produitService.saveProduit(produitDTO);
     }
 
     @DeleteMapping("/{id}")
@@ -30,7 +34,7 @@ public class ProduitController {
     }
 
     @PutMapping("/{id}")
-    public Produit updateProduit(@PathVariable Long id, @RequestBody Produit updatedProduit) {
-        return produitService.updateProduit(id, updatedProduit);
+    public ProduitDTO updateProduit(@PathVariable Long id, @RequestBody ProduitDTO updatedProduitDTO) {
+        return produitService.updateProduit(id, updatedProduitDTO);
     }
 }

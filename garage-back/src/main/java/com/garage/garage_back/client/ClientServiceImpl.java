@@ -9,22 +9,32 @@ import java.util.List;
 @Service
 public class ClientServiceImpl implements ClientService {
 
-    @Autowired
-    private ClientRepository clientRepository;
+    private final ClientRepository clientRepository;
+    private final ClientMapper clientMapper;
 
-    @Override
-    public Client saveClient(Client client) {
-        return clientRepository.save(client);
+    ClientServiceImpl(ClientRepository clientRepository, ClientMapper clientMapper) {
+        this.clientRepository = clientRepository;
+        this.clientMapper = clientMapper;
     }
 
     @Override
-    public Client getClientById(Long id) {
-        return clientRepository.findById(id).orElse(null);
+    public ClientDTO saveClient(ClientDTO clientDTO) {
+        Client client = clientMapper.toClient(clientDTO);
+        Client clientSaved =  clientRepository.save(client);
+        return clientMapper.toClientDTO(clientSaved);
     }
 
     @Override
-    public List<Client> getAllClients() {
-        return clientRepository.findAll();
+    public ClientDTO getClientById(Long id) {
+        Client client = clientRepository.findById(id).orElseThrow(() -> new RuntimeException("Client non trouvé"));
+        return clientMapper.toClientDTO(client);
+    }
+
+    @Override
+    public List<ClientDTO> getAllClients() {
+        return clientRepository.findAll().stream()
+                .map(clientMapper::toClientDTO)
+                .toList();
     }
 
     @Override
