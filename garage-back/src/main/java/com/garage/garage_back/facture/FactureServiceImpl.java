@@ -62,9 +62,6 @@ public class FactureServiceImpl implements FactureService {
                     .orElseThrow(() -> new RuntimeException("Produit introuvable"));
 
             int quantite = ligne.getQuantite();
-            if (produit.getStockActuel() < quantite) {
-                throw new RuntimeException("Stock insuffisant pour le produit : " + produit.getDesignation());
-            }
 
             double prixUnitaireHT = produit.getPrixUnitaireHT();
             double tva = produit.getTva();
